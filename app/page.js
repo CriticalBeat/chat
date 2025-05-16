@@ -1,43 +1,46 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import io from 'socket.io-client';
+import { db } from '../firebase';
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+} from 'firebase/firestore';
 
 export default function Home() {
-  const socketRef = useRef(null);
-  const messagesEndRef = useRef(null); // 👈 reference to the last message
+  const messagesEndRef = useRef(null);
   const [name, setName] = useState('');
   const [tempName, setTempName] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
 
   useEffect(() => {
-    socketRef.current = io({
-      path: '/api/socket_io',
-    });
+    const q = query(collection(db, 'messages'), orderBy('timestamp'));
 
-    socketRef.current.on('chat-history', (msgs) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map((doc) => doc.data());
       setMessages(msgs);
     });
 
-    socketRef.current.on('chat-message', (msg) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    return () => {
-      socketRef.current.disconnect();
-    };
+    return () => unsubscribe();
   }, []);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (input && name) {
-      socketRef.current.emit('chat-message', { name, text: input });
+      await addDoc(collection(db, 'messages'), {
+        name,
+        text: input,
+        timestamp: serverTimestamp(),
+      });
       setInput('');
     }
   };
@@ -79,7 +82,7 @@ export default function Home() {
                   <span className="font-semibold">{msg.name}</span>: {msg.text}
                 </div>
               ))}
-              <div ref={messagesEndRef} /> {/* 👈 scroll target */}
+              <div ref={messagesEndRef} />
             </div>
             <input
               className="w-full border p-2 rounded"
