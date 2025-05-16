@@ -1,13 +1,16 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
 import {
   collection,
   addDoc,
   onSnapshot,
-  serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  serverTimestamp,
 } from "firebase/firestore";
+
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
