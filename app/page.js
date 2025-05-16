@@ -1,75 +1,79 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import {
   collection,
   addDoc,
-  onSnapshot,
+  serverTimestamp,
   query,
   orderBy,
-  serverTimestamp,
+  onSnapshot,
 } from "firebase/firestore";
 
-
-export default function Home() {
+export default function Page() {
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
 
-  // Load messages from Firestore
   useEffect(() => {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setMessages(msgs);
+      setMessages(snapshot.docs.map((doc) => doc.data()));
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Send message
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!name || !message) return;
 
     await addDoc(collection(db, "messages"), {
-      text: newMessage,
-      timestamp: serverTimestamp()
+      name,
+      message,
+      timestamp: serverTimestamp(),
     });
 
-    setNewMessage("");
+    setMessage("");
   };
 
   return (
-    <div className="p-4 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Public Chat</h1>
+    <main className="text-black p-4 max-w-xl mx-auto">
+      <h1 className="text-black text-2xl font-bold mb-4">Public Chat</h1>
 
-      <div className="border rounded p-3 h-96 overflow-y-scroll bg-gray-50 mb-4">
-        {messages.map((msg) => (
-          <div key={msg.id} className="mb-2 p-2 bg-white rounded shadow">
-            {msg.text}
-          </div>
-        ))}
-      </div>
-
-      <form onSubmit={sendMessage} className="flex space-x-2">
+      <form onSubmit={sendMessage} className="text-black mb-4 space-y-2">
         <input
-          className="flex-1 border rounded p-2"
+          className="text-black w-full p-2 border rounded"
           type="text"
-          placeholder="Type a message..."
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Your name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="text-black w-full p-2 border rounded"
+          type="text"
+          placeholder="Your message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
         />
         <button
           type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           Send
         </button>
       </form>
-    </div>
+
+      <div className="text-black space-y-2">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className="text-black bg-gray-100 p-2 rounded border border-gray-300"
+          >
+            <strong>{msg.name}</strong>: {msg.message}
+          </div>
+        ))}
+      </div>
+    </main>
   );
 }
