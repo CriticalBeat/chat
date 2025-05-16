@@ -1,79 +1,87 @@
-"use client";
-import { useState, useEffect } from "react";
-import { db } from "../firebase";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  onSnapshot,
-} from "firebase/firestore";
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import { db } from '../firebase';
+import { collection, addDoc, onSnapshot, serverTimestamp, query, orderBy } from 'firebase/firestore';
 
-export default function Page() {
-  const [name, setName] = useState("");
-  const [message, setMessage] = useState("");
+export default function Home() {
+  const messagesEndRef = useRef(null);
+  const [name, setName] = useState('');
+  const [tempName, setTempName] = useState('');
+  const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
 
   useEffect(() => {
-    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+    const q = query(collection(db, 'messages'), orderBy('timestamp'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map((doc) => doc.data()));
+      setMessages(snapshot.docs.map(doc => doc.data()));
     });
 
     return () => unsubscribe();
   }, []);
 
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!name || !message) return;
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
-    await addDoc(collection(db, "messages"), {
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+
+    await addDoc(collection(db, 'messages'), {
       name,
-      message,
+      text: input.trim(),
       timestamp: serverTimestamp(),
     });
 
-    setMessage("");
+    setInput('');
+  };
+
+  const handleJoin = () => {
+    if (tempName.trim()) setName(tempName.trim());
   };
 
   return (
-    <main className="text-black p-4 max-w-xl mx-auto">
-      <h1 className="text-black text-2xl font-bold mb-4">Public Chat</h1>
-
-      <form onSubmit={sendMessage} className="text-black mb-4 space-y-2">
-        <input
-          className="text-black w-full p-2 border rounded"
-          type="text"
-          placeholder="Your name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="text-black w-full p-2 border rounded"
-          type="text"
-          placeholder="Your message"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Send
-        </button>
-      </form>
-
-      <div className="text-black space-y-2">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className="text-black bg-gray-100 p-2 rounded border border-gray-300"
-          >
-            <strong>{msg.name}</strong>: {msg.message}
+    <div className="text-black flex flex-col items-center justify-center min-h-screen p-6 bg-gray-100">
+      <div className="w-full max-w-xl bg-white rounded-xl shadow-lg p-6">
+        {!name ? (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Enter your name to join</h2>
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Your full name"
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            />
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              onClick={handleJoin}
+            >
+              Join Chat
+            </button>
           </div>
-        ))}
+        ) : (
+          <>
+            <h2 className="text-2xl font-bold mb-4">Public Chat</h2>
+            <div className="border rounded p-3 h-64 overflow-y-scroll mb-4 bg-gray-50">
+              {messages.map((msg, idx) => (
+                <div key={idx} className="mb-2">
+                  <span className="font-semibold">{msg.name}</span>: {msg.text}
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+            <input
+              className="w-full border p-2 rounded"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+              placeholder="Type your message"
+            />
+          </>
+        )}
       </div>
-    </main>
+    </div>
   );
 }
